@@ -16,11 +16,15 @@
 
 declare(strict_types=1);
 session_start();
+// timezone para operaciones de fecha
+date_default_timezone_set('America/Santiago');
+// regenerar ID para defender contra fijación de sesión
+session_regenerate_id(true);
 
 // ── Configuración ──────────────────────────────────────────────────────────
 
 // ⚠️ CAMBIAR ESTOS VALORES antes de subir al servidor
-define('EMAIL_TERAPEUTA',   'rekkiemasajes@gmail.com');   // Email donde llegan las reservas
+define('EMAIL_TERAPEUTA',   'perfumes.arhom@gmail.com');   // Email donde llegan las reservas
 define('EMAIL_REMITENTE',   'noreply@divinittys.cl');     // Email que aparece como remitente
 define('NOMBRE_NEGOCIO',    'RekkieMasajes');
 define('WHATSAPP_NUMERO',   '56989024643');
@@ -56,7 +60,16 @@ function redirigir(bool $ok, string $msg = ''): never {
 }
 
 
-// ── 1. HONEYPOT anti-spam ──────────────────────────────────────────────────
+// ── 1. CSRF token ─────────────────────────────────────────────────────────
+$tokenPost = $_POST['csrf_token'] ?? '';
+$tokenSess = $_SESSION['csrf_token'] ?? '';
+if (!$tokenPost || !$tokenSess || !hash_equals($tokenSess, $tokenPost)) {
+    redirigir(false, 'Token de seguridad inválido');
+}
+// invalidar para evitar reutilización
+unset($_SESSION['csrf_token']);
+
+// ── 2. HONEYPOT anti-spam ──────────────────────────────────────────────────
 // Si el campo "hp_website" tiene contenido, es un bot. Simular éxito.
 if (!empty($_POST['hp_website'])) {
     // Silenciosamente "éxito" — el bot cree que funcionó
@@ -65,7 +78,7 @@ if (!empty($_POST['hp_website'])) {
 
 
 // ── 2. RATE LIMITING básico por IP (archivo) ─────────────────────────────
-$ip_raw   = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+$ip_raw   = filter_var($_SERVER['REMOTE_ADDR'] ?? '', FILTER_VALIDATE_IP) ?: '0.0.0.0';
 $ip_hash  = hash('sha256', $ip_raw); // nunca guardar IP en texto claro
 $rl_file  = sys_get_temp_dir() . '/rekkie_rl_' . $ip_hash . '.json';
 $ahora    = time();
@@ -183,7 +196,7 @@ function generarEnlaceGoogleCalendar(
 
     $titulo = NOMBRE_NEGOCIO . ' — ' . $servicio;
     $desc   = "Masaje profesional en " . NOMBRE_NEGOCIO . ".\n"
-            . "Confirmación por WhatsApp al +{$_ENV['WA_NUM'] ?? WHATSAPP_NUMERO}.\n"
+            . "Confirmación por WhatsApp al +" . WHATSAPP_NUMERO . ".\n"
             . "No se requiere pago anticipado.";
 
     return 'https://calendar.google.com/calendar/r/eventedit?' . http_build_query([
@@ -203,13 +216,22 @@ $enlace_wa   = 'https://wa.me/' . WHATSAPP_NUMERO . '?text=' .
 
 
 // ── 5. EMAIL AL TERAPEUTA ─────────────────────────────────────────────────
+// pequeña utilidad para limpiar valores que se usarán en cabeceras (evitar CRLF)
+function sanitizeHeader(string $str): string {
+    return str_replace(["\r", "\n"], '', $str);
+}
+
 function enviarEmailTerapeuta(
     string $nombre, string $telefono, string $email,
     string $servicio, string $fecha, string $hora,
     string $notas, string $enlace_gc, string $enlace_wa
 ): bool {
 
-    $asunto = "🗓️ Nueva reserva: {$servicio} — {$fecha} {$hora}";
+    // proteger valores en el asunto
+    $servicio_esc = sanitizeHeader($servicio);
+    $fecha_esc    = sanitizeHeader($fecha);
+    $hora_esc     = sanitizeHeader($hora);
+    $asunto = "🗓️ Nueva reserva: {$servicio_esc} — {$fecha_esc} {$hora_esc}";
 
     $cuerpo_html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'>
     <style>
@@ -261,7 +283,14 @@ function enviarEmailCliente(
     string $enlace_gc, string $enlace_wa
 ): bool {
 
-    if (empty($email)) return true; // No hay email, ok
+    // limpiar valores usados en headers
+    $email_s    = sanitizeHeader($email);
+    $nombre_s   = sanitizeHeader($nombre);
+    $servicio_s = sanitizeHeader($servicio);
+    $fecha_s    = sanitizeHeader($fecha);
+    $hora_s     = sanitizeHeader($hora);
+
+    if (empty($email_s)) return true; // No hay email, ok
 
     $asunto = "✅ Solicitud recibida — " . NOMBRE_NEGOCIO;
 
@@ -303,7 +332,7 @@ function enviarEmailCliente(
 
     $headers  = "MIME-Version: 1.0\r\n";
     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= "From: " . NOMBRE_NEGOCIO . " <" . EMAIL_REMITENTE . ">\r\n";
+    $headers .= "From: " . sanitizeHeader(NOMBRE_NEGOCIO) . " <" . sanitizeHeader(EMAIL_REMITENTE) . ">\r\n";
     $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
 
     return mail($email, $asunto, $cuerpo_html, $headers);
@@ -316,6 +345,12 @@ $ok_terapeuta = enviarEmailTerapeuta(
     $servicio, $fecha, $hora,
     $notas, $enlace_gc, $enlace_wa
 );
+// registrar falla de envío si ocurrió
+if (!$ok_terapeuta) {
+    @file_put_contents(__DIR__ . '/reservas_errors.txt',
+        date('Y-m-d H:i:s') . " | email al terapeuta falló\n",
+        FILE_APPEND | LOCK_EX);
+}
 
 // Email cliente (no bloquear si falla)
 if ($email !== '') {

@@ -4,10 +4,19 @@
 // Hosting compartido PHP 8.4 · Sin Composer · Sin frameworks
 // ============================================================
 session_start();
+// for date functioszsns, ensure correct timezone (Santiago de Chile)
+date_default_timezone_set('America/Santiago');
+// regenerar ID para mitigar fijación de sesión
+session_regenerate_id(true);
 
-// Captcha simple: generar suma aleatoria
-$n1 = rand(2, 9);
-$n2 = rand(1, 8);
+// CSRF token simple
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+}
+
+// Captcha simple: generar suma aleatoria (random_int es más seguro que rand)
+$n1 = random_int(2, 9);
+$n2 = random_int(1, 8);
 $_SESSION['captcha_answer'] = $n1 + $n2;
 
 $msg_ok    = isset($_GET['ok']);
@@ -158,8 +167,7 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                     <div class="service-card__price">
                         <strong>$30.000</strong><span>/ 60 min</span>
                     </div>
-                    <a href="#reservar" class="btn btn--outline"
-                       onclick="prefillServicio('Masaje de Relajación ($30.000)')">
+                    <a href="#reservar" class="btn btn--outline" data-service="Masaje de Relajación ($30.000)">
                         Reservar
                     </a>
                 </div>
@@ -186,8 +194,7 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                     <div class="service-card__price">
                         <strong>$40.000</strong><span>/ 60 min</span>
                     </div>
-                    <a href="#reservar" class="btn btn--outline"
-                       onclick="prefillServicio('Masaje Descontracturante ($40.000)')">
+                    <a href="#reservar" class="btn btn--outline" data-service="Masaje Descontracturante ($40.000)">
                         Reservar
                     </a>
                 </div>
@@ -214,8 +221,7 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                     <div class="service-card__price">
                         <strong>$50.000</strong><span>/ 75 min</span>
                     </div>
-                    <a href="#reservar" class="btn btn--outline"
-                       onclick="prefillServicio('Drenaje Linfático ($50.000)')">
+                    <a href="#reservar" class="btn btn--outline" data-service="Drenaje Linfático ($50.000)">
                         Reservar
                     </a>
                 </div>
@@ -243,8 +249,7 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                     <div class="service-card__price">
                         <strong>$60.000</strong><span>/ 75 min</span>
                     </div>
-                    <a href="#reservar" class="btn btn--primary"
-                       onclick="prefillServicio('Masaje Reductivo ($60.000)')">
+                    <a href="#reservar" class="btn btn--primary" data-service="Masaje Reductivo ($60.000)">
                         Reservar
                     </a>
                 </div>
@@ -481,6 +486,8 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                 <label for="hp_website">Sitio web (dejar vacío)</label>
                 <input type="text" id="hp_website" name="hp_website" tabindex="-1" autocomplete="off" value="">
             </div>
+            <!-- CSRF token -->
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 
             <div class="form-row">
                 <div class="form-group">

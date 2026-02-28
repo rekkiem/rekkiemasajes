@@ -58,19 +58,30 @@ const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
    2. PREFILL SERVICIO — desde botones de cards
 ============================================================ */
 /**
- * Función global llamada desde onclick en los botones de cada card.
- * Pre-selecciona el servicio en el select del formulario.
+ * Pre-selecciona el servicio en el formulario.
+ * Se puede invocar con un valor o pasando un elemento con dataset.service.
  */
-window.prefillServicio = function(valor) {
+function prefillServicio(valor) {
     const select = $('#servicio');
     if (!select) return;
-    // Buscar opción que coincida
+    const v = typeof valor === 'string' ? valor : valor.dataset.service;
     Array.from(select.options).forEach(opt => {
-        if (opt.value === valor) {
-            select.value = valor;
+        if (opt.value === v) {
+            select.value = v;
         }
     });
-};
+}
+
+// delegate clicks from anchors that carry data-service
+document.addEventListener('click', e => {
+    const a = e.target.closest('a[data-service]');
+    if (a) {
+        prefillServicio(a);
+    }
+});
+
+// expose in global scope for backward compatibility (if needed)
+window.prefillServicio = prefillServicio;
 
 
 /* ============================================================
