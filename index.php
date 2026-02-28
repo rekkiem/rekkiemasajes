@@ -88,13 +88,13 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
             <span></span><span></span><span></span>
         </button>
     </div>
-    <!-- Menú móvil -->
+    <!-- Menú móvil 
     <div class="nav__mobile" id="nav-mobile" hidden>
         <a href="#servicios">Servicios</a>
         <a href="#como-funciona">¿Cómo funciona?</a>
         <a href="#testimonios">Testimonios</a>
         <a href="#reservar" class="btn btn--primary">Agendar hora</a>
-    </div>
+    </div> -->
 </header>
 
 
@@ -604,7 +604,7 @@ $msg_error = isset($_GET['err']) ? htmlspecialchars(strip_tags($_GET['err'])) : 
                     <a href="#" aria-label="Instagram" rel="noopener">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
                     </a>
-                    <a href="#" aria-label="Facebook" rel="noopener">
+                    <a href="https://www.facebook.com/profile.php?id=61588518213962" aria-label="Facebook" rel="noopener" target="_blank">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
                     </a>
                     <a href="https://wa.me/56989024643" aria-label="WhatsApp" rel="noopener">
